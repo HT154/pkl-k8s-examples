@@ -1,0 +1,128 @@
+//===----------------------------------------------------------------------===//
+// Copyright © 2026 Apple Inc. and the Pkl project authors. All rights reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//===----------------------------------------------------------------------===//
+module k8s
+
+import "pkl:pklbinary"
+import "pkl:reflect"
+
+import "@k8s/api/apps/v1/Deployment.pkl"
+import "@k8s/api/core/v1/Secret.pkl"
+import "@k8s/api/core/v1/Service.pkl"
+import "@k8s/api/networking/v1/Ingress.pkl"
+
+import "AppConfig.pkl"
+
+hidden imageTag: String = "v0.1.0"
+
+/// Extract the parent directory name from the path.
+///
+/// For example: when evaluating ./dev/k8s.pkl, env "dev" is extracted from the path.
+hidden env: String = reflect.Module(module).uri.split("/").dropLast(1).last
+
+/// Import the appConfig.pkl from the directory corresponding to [env].
+hidden fixed appConfig: AppConfig = import*("*/appConfig.pkl")["\(env)/appConfig.pkl"] as AppConfig
+
+local appPort = appConfig.port
+
+local resourceName = "end2env-\(env)"
+
+/// Render [appConfig] using pkl-binary and deploy it as a Secret.
+config: Secret = new {
+  metadata {
+    name = resourceName
+  }
+  data {
+    ["appConfig.pkl.msgpack"] = new pklbinary.Renderer {}.renderDocument(appConfig).base64
+  }
+}
+
+deployment: Deployment = new {
+  metadata {
+    name = resourceName
+  }
+  spec {
+    template {
+      spec {
+        volumes {
+          new {
+            name = "config"
+            secret { secretName = resourceName }
+          }
+        }
+        containers {
+          new {
+            name = "app"
+            image = "my-registry:5000/end2end:\(imageTag)"
+            readinessProbe {
+              httpGet {
+                port = appPort
+                path = "/healthz"
+              }
+            }
+            volumeMounts {
+              new { name = "config"; mountPath = "/config" }
+            }
+            args {
+              "/config/appConfig.pkl.msgpack"
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+service: Service = new {
+  metadata {
+    name = resourceName
+  }
+  spec {
+    ports {
+      new {
+        name = "http"
+        port = appPort
+      }
+    }
+  }
+}
+
+ingress: Ingress = new {
+  metadata {
+    name = resourceName
+  }
+  spec {
+    defaultBackend {
+      service {
+        name = resourceName
+        port {
+          number = appPort
+        }
+      }
+    }
+  }
+}
+
+output {
+  value = new Listing {
+    deployment
+    service
+    ingress
+    config
+  }
+  renderer = (Deployment.output.renderer as YamlRenderer) {
+    isStream = true
+  }
+}

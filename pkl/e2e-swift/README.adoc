@@ -1,0 +1,49 @@
+= End-to-end Kubernetes + Swift Application Configuration Example
+
+This example demonstrates how to
+
+* Build an application config schema in Pkl and amend it for different environments
+* Generate Swift types from the app config schema
+* Load app configuration via the Pkl evaluator or from pkl-binary data
+* Define web app Kubernetes manifests in Pkl and amend it for different environments
+* Encode application configuration using `pkl-binary` during deployment
+* Evaluate Kubernetes and application configuration in a single pass.
+
+To generate/update Swift types from `pkl/AppConfig.pkl`, run:
+
+[source,bash]
+----
+pkl run @pkl.swift/gen.pkl pkl/AppConfig.pkl -o Sources/end2end
+----
+
+To examine the effective app config for an environment, run:
+
+[source,bash]
+----
+pkl eval pkl/<env>/appConfig.pkl
+----
+
+To examine the effective app config for an environment, run:
+
+[source,bash]
+----
+pkl eval pkl/<env>/appConfig.pkl
+----
+
+To examine the effective Kubernetes manifests for an environment, run:
+
+[source,bash]
+----
+pkl eval pkl/<env>/k8s.pkl
+----
+
+To run the sample app locally, run:
+[source,bash]
+----
+# load config via Pkl evaluator at runtime
+swift run end2end pkl/<env>/appConfig.pkl
+
+# load config from pre-evaluated pkl-binary data
+pkl eval pkl/<env>/appConfig.pkl --format pkl-binary > cfg.msgpack
+swift run end2end cfg.msgpack
+----

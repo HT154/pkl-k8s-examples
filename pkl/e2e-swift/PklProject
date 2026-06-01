@@ -1,0 +1,10 @@
+amends "pkl:Project"
+
+dependencies {
+  ["pkl.swift"] {
+    uri = "package://pkg.pkl-lang.org/pkl-swift/pkl.swift@0.8.2"
+  }
+  ["k8s"] {
+    uri = "package://pkg.pkl-lang.org/pkl-k8s/k8s@1.4.1"
+  }
+}

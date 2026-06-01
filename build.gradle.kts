@@ -30,4 +30,10 @@ spotless {
     target("**/*.pkl")
     licenseHeader(lineCommentLicenseHeader, "(/// |module |import |amends |(\\w+))")
   }
+
+  format("swift") {
+    target("**/*.swift")
+    targetExclude("**/Package.swift")
+    licenseHeader(lineCommentLicenseHeader, "(/// |import |(\\w+))")
+  }
 }
